@@ -3,7 +3,6 @@ const WebSocket = require('ws');
 const http = require('http');
 const path = require('path');
 const axios = require('axios');
-const fs = require('fs');
 require('dotenv').config();
 const cors = require('cors');
 
@@ -18,37 +17,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const PORT = process.env.PORT || 3000;
 
-const HISTORY_FILE = path.join(__dirname, 'chat_history.json');
-const HISTORY_LIMIT = 15;
-
 // Store connected users
 const connectedUsers = new Map();
 
-// Helper to read last N chat messages from history file
-function getChatHistory(limit = HISTORY_LIMIT) {
-  try {
-    if (!fs.existsSync(HISTORY_FILE)) return [];
-    const raw = fs.readFileSync(HISTORY_FILE, 'utf8');
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr.slice(-limit) : [];
-  } catch {
-    return [];
-  }
-}
-
-// Helper to append a chat message to history file
-function appendChatHistory(messageObj) {
-  let history = getChatHistory(HISTORY_LIMIT);
-  history.push(messageObj);
-  if (history.length > HISTORY_LIMIT) history = history.slice(-HISTORY_LIMIT);
-  try {
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
-  } catch (err) {
-    console.error('Failed to write chat history:', err.message);
-  }
-}
-
-// Groq API translation function with context-aware translation
+// Groq API translation function with auto-correct and context improvement
 async function translateText(text, targetLanguage = 'en', sourceLanguage = 'auto') {
   try {
     const languageMap = {
@@ -64,31 +36,53 @@ async function translateText(text, targetLanguage = 'en', sourceLanguage = 'auto
 
     const targetLangName = languageMap[targetLanguage] || targetLanguage;
 
-    // Get last 10-15 chat messages for context
-    const history = getChatHistory(10);
-    let contextBlock = '';
-    if (history.length) {
-      contextBlock = history.map((msg, i) => {
-        return `[${msg.username || 'User'}]: ${msg.originalMessage || msg.message || ''}`;
-      }).join('\n');
-    }
-
-    // Strict translation engine prompt - mechanically faithful translation
-    const systemPrompt = `You are a strict translation engine for a chat application.\nYour only job is to translate text from the source language to the target language without changing the meaning, style, tone, vibe, slang level, intention, or emotional intensity of the message in any way.\n\nYou must ignore all tendencies to "fix", "improve", "interpret", or "rephrase" messages.\n\n🔥 SECTION 1 — MEANING PRESERVATION (CRITICAL)\n\n- Translate ONLY the meaning the user wrote.\n- Never guess extra meaning.\n- Never add new meaning.\n- Never weaken or strengthen meaning.\n- If the user writes a casual question, the translation must be equally casual.\n- If the user writes slang, the translation must be slang — not formal.\n- If the message is rude or blunt, preserve the rudeness or bluntness.\n\n🔥 SECTION 2 — SLANG, INTERNET SPEAK & CASUAL LANGUAGE\n\n- Never normalize slang.\n- "wassup" ≠ "what's up"\n- "чё как?" ≠ "что нового?"\n- "wyd" ≠ "what are you doing?"\n- Translate slang to slang of similar intensity, not formal equivalents.\n- Preserve misspellings, abbreviations, and stretched letters:\n  - "broooo" → equivalent stretched form\n  - "plz" → "плз" (not "пожалуйста")\n  - "idk" → "я хз" not "я не знаю"\n- Preserve youth slang, meme slang, and TikTok slang.\n\n🔥 SECTION 3 — STRUCTURE, FORMAT, AND SYMBOLS\n\nYou must preserve:\n- punctuation\n- lowercase/uppercase usage\n- spacing\n- line breaks\n- emojis\n- formatting style\n- repeated letters\n- tone markers\n- deliberate ambiguity\n- chaotic writing style, if present\n\n🔥 SECTION 4 — NO AUTOCORRECTION RULE\n\n- Do NOT fix grammar.\n- Do NOT fix spelling.\n- Do NOT fix punctuation.\n- Do NOT expand shorthand.\n- Do NOT replace ambiguity with clarity.\n- Do NOT change short forms to long forms.\n- Do NOT rephrase to a more natural sentence.\n- If the user writes messy text, your translation must be equally messy.\n\n🔥 SECTION 5 — NO SELF-THINKING, NO INTERPRETING\n\n- Do NOT interpret intention.\n- Do NOT guess context.\n- Do NOT insert politeness ("hello", "sir", "please") unless the user wrote it.\n- Do NOT replace slang with "better" slang.\n- Do NOT make the message sound more natural.\n- Do NOT adjust for different culture unless required for meaning.\n- Your translation must be mechanically faithful, not "improved".\n\n🔥 SECTION 6 — EXAMPLES (MANDATORY BEHAVIOR)\n\nExample 1\nInput: wassup\nCorrect Output (Russian): чё как?\nIncorrect Output: что случилось? / привет / что нового? / what's up\n\nExample 2\nInput: чё как?\nCorrect Output (English): wassup\n(NOT "what's good", "what's up", "how are you", or "what's going on")\n\nExample 3\nInput: broooo u wild 😭\nCorrect Output: брооо ты жесть 😭\n\nExample 4\nInput: idk man feels weird\nCorrect Output: я хз бро как-то стрёмно\n\n🔥 SECTION 7 — OUTPUT RULES\n\n- You MUST output ONLY the translation\n- NO explanations\n- NO reasoning\n- NO alternative interpretations\n- NO corrected version\n- NO comments\n- Just the translation.\n\n✅ FINAL OUTPUT FORMAT\n\nReturn only the translated message, preserving meaning + tone + slang exactly.`;
-
-    const userPrompt = `Previous chat context:\n${contextBlock}\n\nTranslate ONLY to ${targetLangName}:\n${text}`;
-
     const response = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
         model: 'llama-3.1-8b-instant',
         messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+          {
+            role: 'system',
+            content: `Context-Aware, Iterative, Style-Locked, Meaning-Preserved Translator
+
+You are a translation engine for a chat application.
+Your task is to translate messages while preserving:
+- meaning
+- tone
+- slang level
+- formality
+- emotional temperature
+- context of casual conversation
+- the "vibe" of the message
+- the user's intention
+
+You must NOT normalize or rewrite messages.
+
+Before producing a translation, you MUST internally run a self-iteration step to identify:
+- The style (casual, formal, meme, rude, joking, ironic, depressing, excited, bored, chaotic)
+- The social temperature (friendly, close friend vibe, stranger vibe, playful, annoyed)
+- The conversational intention (greeting, teasing, checking in, complaining, flirting, joking)
+- The language register (slang, internet speak, shorthand, abbreviations, incorrect spelling)
+- The correct equivalent tone in the target language
+
+After this internal understanding, you must translate the message without changing its meaning or style.
+
+RULES:
+1. Meaning must stay EXACT. Tone must stay EXACT. Slang must stay EXACT.
+2. If the user writes "bored", DO NOT translate to "boredom". If "wassup", DO NOT translate to "what's up". Match intensity, slang level, youth tone, and emotional energy.
+3. Do NOT: add politeness, fix grammar, fix spelling, rewrite slang, expand shorthand, make text more formal, make text more natural, improve the meaning.
+4. Only output the translation. No explanations, no alternative versions, no reasoning, no notes.
+
+Always perform the internal style-meaning iteration loop to understand the text's intention and tone BEFORE translating.`
+          },
+          {
+            role: 'user',
+            content: `Translate this text to ${targetLangName} (${targetLanguage}). Only output the translation, no explanations:\n\n${text}`
+          }
         ],
-        temperature: 0.2,
-        max_tokens: 500,
-        top_p: 0.8
+        temperature: 0.3,
+        max_tokens: 1000,
+        top_p: 0.9
       },
       {
         headers: {
@@ -100,15 +94,15 @@ async function translateText(text, targetLanguage = 'en', sourceLanguage = 'auto
 
     let result = response.data.choices[0].message.content.trim();
     
-    // Remove all common explanation patterns
+    // Remove thinking tags and content (for models that use extended thinking)
+    result = result.replace(/<think>[\s\S]*?<\/think>\s*/gi, '').trim();
+    
+    // Remove common explanation patterns that Groq might add
     result = result.replace(/\(No changes needed.*?\)/gi, '').trim();
     result = result.replace(/\(Already in .*?\)/gi, '').trim();
-    result = result.replace(/\(.*?translated from.*?\)/gi, '').trim();
     result = result.replace(/Translation:?\s*/gi, '').trim();
-    result = result.replace(/^["']|["']$/g, '').trim();
     
-    // If result is empty after cleanup, return original
-    return result || text;
+    return result;
   } catch (error) {
     console.error('Translation error:', error.message);
     return text; // Return original text if translation fails
@@ -125,15 +119,15 @@ async function detectLanguage(text) {
         messages: [
           {
             role: 'system',
-            content: 'ONLY respond with a 2-letter language code. Nothing else. No explanation, no text, just the code like "en" or "ru".'
+            content: 'You are a language detection expert. Respond with ONLY the 2-letter language code (e.g., en, es, fr, de, zh, ja, pt, ru). Nothing else.'
           },
           {
             role: 'user',
-            content: `Detect language (respond ONLY with 2-letter code):\n${text}`
+            content: `What language is this text in? Respond with only the code:\n\n${text}`
           }
         ],
         temperature: 0.1,
-        max_tokens: 3
+        max_tokens: 5
       },
       {
         headers: {
@@ -167,10 +161,13 @@ wss.on('connection', (ws) => {
       if (data.type === 'join') {
         userId = data.userId;
         username = data.username;
+        // store user's preferred incoming language if provided (what they want to RECEIVE in)
+        const userLang = data.myLanguage || 'en';
         connectedUsers.set(userId, {
           ws,
           username,
-          userId
+          userId,
+          myLanguage: userLang
         });
 
         // Send user list to all clients
@@ -211,12 +208,19 @@ wss.on('connection', (ws) => {
           timestamp: new Date().toISOString()
         };
 
-        // Save to chat history for context
-        appendChatHistory({ username, userId, originalMessage: messageToSend, timestamp: chatMessage.timestamp });
+        // Translate only to the languages that connected users actually want to receive in.
+        // Build a set of unique target languages from connected users' preferences.
+        const languagesNeeded = new Set();
+        connectedUsers.forEach(u => {
+          if (u && u.myLanguage) languagesNeeded.add(u.myLanguage);
+        });
 
-        // Translate for other users to their incoming language preference
-        const targetLanguages = ['en', 'es', 'fr', 'de', 'zh', 'ja', 'pt', 'ru'];
-        const uniqueLangs = [...new Set(targetLanguages)];
+        // If incomingLanguage was provided by sender (as a preference), include as fallback
+        if (chatMessage.incomingLanguage && chatMessage.incomingLanguage !== 'auto') {
+          languagesNeeded.add(chatMessage.incomingLanguage);
+        }
+
+        const uniqueLangs = [...languagesNeeded];
 
         for (const lang of uniqueLangs) {
           try {
@@ -245,6 +249,18 @@ wss.on('connection', (ws) => {
           translatedText: translation,
           targetLanguage
         }));
+      }
+
+      // Handle settings updates from client (e.g., preferred incoming language)
+      if (data.type === 'update-settings') {
+        const { myLanguage: newLang } = data;
+        if (userId && connectedUsers.has(userId)) {
+          const user = connectedUsers.get(userId);
+          user.myLanguage = newLang || user.myLanguage || 'en';
+          connectedUsers.set(userId, user);
+          // Optionally broadcast updated user list
+          broadcastUserList();
+        }
       }
     } catch (error) {
       console.error('WebSocket message error:', error);

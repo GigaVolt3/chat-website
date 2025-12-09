@@ -29,6 +29,9 @@
                 <p class="info-text">
                     <span id="savedUsername"></span>
                 </p>
+                <p class="info-text auto-login-hint" style="font-size: 0.85em; color: #666; margin-top: 15px; display: none;">
+                    Auto-logging in with saved username...
+                </p>
             </div>
         </div>
 
@@ -109,7 +112,7 @@
             </div>
             <div id="settingsBody" class="modal-body">
                 <div class="settings-group">
-                    <label for="myLanguageSelect">My Language (send messages in):</label>
+                    <label for="myLanguageSelect">Send messages in:</label>
                     <select id="myLanguageSelect">
                         <option value="auto">Auto (No translation)</option>
                         <option value="en">English</option>
@@ -138,6 +141,7 @@
                 </div>
 
                 <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
+                <button id="logoutBtn" class="btn btn-danger">Logout</button>
             </div>
         </div>
     </div>

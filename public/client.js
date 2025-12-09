@@ -40,8 +40,10 @@ const settingsBtn = document.getElementById('settingsBtn');
 const myLanguageSelect = document.getElementById('myLanguageSelect');
 const translateToSelect = document.getElementById('translateToSelect');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+const logoutBtn = document.getElementById('logoutBtn');
 const modalCloses = document.querySelectorAll('.modal-close');
 const savedUsernameSpan = document.getElementById('savedUsername');
+const autoLoginHint = document.querySelector('.auto-login-hint');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -79,6 +81,7 @@ function setupEventListeners() {
     sendBtn.addEventListener('click', sendMessage);
     settingsBtn.addEventListener('click', openSettings);
     saveSettingsBtn.addEventListener('click', saveSettings);
+    logoutBtn.addEventListener('click', logout);
     messageInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -114,9 +117,33 @@ function updateCharCount() {
 function checkAutoLogin() {
     const saved = localStorage.getItem('chatUsername');
     if (saved) {
-        usernameInput.focus();
-        // Show hint that they can press enter or will auto-login
+        usernameInput.value = saved;
+        autoLoginHint.style.display = 'block';
+        // Auto-login after a short delay to allow page to fully load
+        setTimeout(() => {
+            automaticJoinChat();
+        }, 500);
     }
+}
+
+// Auto-login without user interaction
+function automaticJoinChat() {
+    const inputUsername = usernameInput.value.trim();
+    
+    if (!inputUsername) {
+        return;
+    }
+
+    username = inputUsername;
+    userId = generateUserId();
+
+    // Save settings to localStorage
+    localStorage.setItem('chatUsername', username);
+    localStorage.setItem('myLanguage', myLanguage);
+    localStorage.setItem('translateToLanguage', translateToLanguage);
+
+    // Connect to WebSocket
+    connectWebSocket();
 }
 
 // Join chat
@@ -166,7 +193,8 @@ function connectWebSocket() {
         ws.send(JSON.stringify({
             type: 'join',
             userId,
-            username
+            username,
+            myLanguage // send preferred incoming language (what this user wants to RECEIVE in)
         }));
 
         // Switch to chat screen
@@ -194,8 +222,10 @@ function connectWebSocket() {
 function handleMessage(event) {
     try {
         const data = JSON.parse(event.data);
+        console.log('Received message:', data);
 
         if (data.type === 'chat') {
+            console.log('Chat message translations:', data.translations);
             displayMessage(data);
         } else if (data.type === 'system') {
             displaySystemMessage(data);
@@ -304,6 +334,13 @@ function saveSettings() {
     
     closeAllModals();
     alert('Settings saved!');
+    // Notify server of updated settings if connected
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'update-settings',
+            myLanguage
+        }));
+    }
 }
 
 // Update user list
@@ -358,6 +395,29 @@ function leaveChat() {
         ws.close();
     }
 
+    loginScreen.classList.add('active');
+    chatScreen.classList.remove('active');
+    messagesList.innerHTML = `
+        <div class="welcome-message">
+            <h2>Welcome to Global Chat</h2>
+            <p>Messages are automatically translated using Groq AI</p>
+            <p>Click on a message to see all translations</p>
+        </div>
+    `;
+    usersList.innerHTML = '<p class="loading">Connecting...</p>';
+    userCount.textContent = '0';
+    messageInput.value = '';
+    charCount.textContent = '0';
+    usernameInput.value = '';
+    usernameInput.focus();
+}
+
+// Logout - clear saved username and leave chat
+function logout() {
+    if (ws) {
+        ws.close();
+    }
+
     // Clear username to force login page
     localStorage.removeItem('chatUsername');
     
@@ -376,6 +436,7 @@ function leaveChat() {
     charCount.textContent = '0';
     usernameInput.value = '';
     usernameInput.focus();
+    closeAllModals();
 }
 
 // Update connection status

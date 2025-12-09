@@ -631,6 +631,12 @@ body {
     border-color: #667eea;
 }
 
+#settingsBody #logoutBtn {
+    margin-top: 20px;
+    border-top: 2px solid #e0e0e0;
+    padding-top: 15px;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .sidebar {
