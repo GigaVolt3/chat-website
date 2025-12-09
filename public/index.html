@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Chat - Real-time Translation</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="screen active">
+            <div class="login-box">
+                <h1>Global Chat</h1>
+                <p class="tagline">Connect with users worldwide</p>
+                
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        id="usernameInput" 
+                        placeholder="Enter your username"
+                        maxlength="20"
+                        autocomplete="off"
+                    >
+                </div>
+
+                <button id="joinBtn" class="btn btn-primary">Join Chat</button>
+                
+                <p class="info-text">
+                    <span id="savedUsername"></span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Chat Screen -->
+        <div id="chatScreen" class="screen">
+            <div class="chat-container">
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <div class="sidebar-header">
+                        <h2>Online Users</h2>
+                        <span id="userCount" class="user-count">0</span>
+                    </div>
+                    <div id="usersList" class="users-list">
+                        <p class="loading">Connecting...</p>
+                    </div>
+                    <button id="leaveBtn" class="btn btn-danger btn-full">Leave Chat</button>
+                </div>
+
+                <!-- Main Chat Area -->
+                <div class="chat-main">
+                    <div class="chat-header">
+                        <h1>Global Chat Room</h1>
+                        <div class="header-info">
+                            <span id="currentUser">User</span>
+                            <span id="connectionStatus" class="status disconnected">●</span>
+                        </div>
+                    </div>
+
+                    <div id="messagesList" class="messages-list">
+                        <div class="welcome-message">
+                            <h2>Welcome to Global Chat</h2>
+                            <p>Messages are automatically translated using Groq AI</p>
+                            <p>Click on a message to see all translations</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-area">
+                        <div class="language-settings">
+                            <button id="settingsBtn" class="btn btn-settings">⚙️ Settings</button>
+                        </div>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="messageInput" 
+                                placeholder="Type your message..."
+                                autocomplete="off"
+                            >
+                            <button id="sendBtn" class="btn btn-send">Send</button>
+                        </div>
+                        <div class="char-count">
+                            <span id="charCount">0</span>/500
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Translation Modal -->
+    <div id="translationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Message Translations</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div id="translationBody" class="modal-body">
+                <!-- Translations will be added here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Language Settings</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div id="settingsBody" class="modal-body">
+                <div class="settings-group">
+                    <label for="myLanguageSelect">My Language (send messages in):</label>
+                    <select id="myLanguageSelect">
+                        <option value="auto">Auto (No translation)</option>
+                        <option value="en">English</option>
+                        <option value="es">Español (Spanish)</option>
+                        <option value="fr">Français (French)</option>
+                        <option value="de">Deutsch (German)</option>
+                        <option value="zh">中文 (Chinese)</option>
+                        <option value="ja">日本語 (Japanese)</option>
+                        <option value="pt">Português (Portuguese)</option>
+                        <option value="ru">Русский (Russian)</option>
+                    </select>
+                </div>
+
+                <div class="settings-group">
+                    <label for="translateToSelect">Receive Messages In:</label>
+                    <select id="translateToSelect">
+                        <option value="en">English</option>
+                        <option value="es">Español (Spanish)</option>
+                        <option value="fr">Français (French)</option>
+                        <option value="de">Deutsch (German)</option>
+                        <option value="zh">中文 (Chinese)</option>
+                        <option value="ja">日本語 (Japanese)</option>
+                        <option value="pt">Português (Portuguese)</option>
+                        <option value="ru">Русский (Russian)</option>
+                    </select>
+                </div>
+
+                <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="client.js"></script>
+</body>
+</html>
