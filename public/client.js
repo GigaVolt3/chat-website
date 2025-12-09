@@ -5,6 +5,7 @@ let username = null;
 let myLanguage = 'en';  // Language I want to RECEIVE in
 let translateToLanguage = 'auto';  // Language to SEND my messages in
 let isConnected = false;
+let enableNotifications = true;
 
 // Language names mapping
 const languageNames = {
@@ -41,6 +42,7 @@ const myLanguageSelect = document.getElementById('myLanguageSelect');
 const translateToSelect = document.getElementById('translateToSelect');
 const saveSettingsBtn = document.getElementById('saveSettingsBtn');
 const logoutBtn = document.getElementById('logoutBtn');
+const enableNotificationsCheckbox = document.getElementById('enableNotificationsCheckbox');
 const modalCloses = document.querySelectorAll('.modal-close');
 const savedUsernameSpan = document.getElementById('savedUsername');
 const autoLoginHint = document.querySelector('.auto-login-hint');
@@ -72,6 +74,15 @@ function loadSavedSettings() {
         translateToLanguage = savedTranslateTo;
         translateToSelect.value = savedTranslateTo;
     }
+    const savedEnableNotif = localStorage.getItem('enableNotifications');
+    if (savedEnableNotif !== null) {
+        enableNotifications = savedEnableNotif === 'true';
+        if (enableNotificationsCheckbox) enableNotificationsCheckbox.checked = enableNotifications;
+    } else {
+        // default to enabled
+        enableNotifications = true;
+        if (enableNotificationsCheckbox) enableNotificationsCheckbox.checked = true;
+    }
 }
 
 // Setup event listeners
@@ -82,6 +93,9 @@ function setupEventListeners() {
     settingsBtn.addEventListener('click', openSettings);
     saveSettingsBtn.addEventListener('click', saveSettings);
     logoutBtn.addEventListener('click', logout);
+    if (enableNotificationsCheckbox) enableNotificationsCheckbox.addEventListener('change', (e) => {
+        enableNotifications = !!e.target.checked;
+    });
     messageInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -227,6 +241,15 @@ function handleMessage(event) {
         if (data.type === 'chat') {
             console.log('Chat message translations:', data.translations);
             displayMessage(data);
+            // Notifications: only for messages from others and when window isn't focused
+            const isOwnMessage = data.userId === userId;
+            if (enableNotifications && !isOwnMessage && !document.hasFocus()) {
+                const displayText = data.translations[myLanguage] || data.translations['en'] || data.originalMessage;
+                const title = `${data.username}`;
+                const body = (displayText.length > 120) ? displayText.substring(0, 117) + '...' : displayText;
+                showBrowserNotification(title, body);
+                playNotificationSound();
+            }
         } else if (data.type === 'system') {
             displaySystemMessage(data);
         } else if (data.type === 'user-list') {
@@ -331,7 +354,9 @@ function saveSettings() {
     // Save to localStorage
     localStorage.setItem('myLanguage', myLanguage);
     localStorage.setItem('translateToLanguage', translateToLanguage);
-    
+    // Save notification preference
+    localStorage.setItem('enableNotifications', enableNotifications ? 'true' : 'false');
+
     closeAllModals();
     alert('Settings saved!');
     // Notify server of updated settings if connected
@@ -340,6 +365,41 @@ function saveSettings() {
             type: 'update-settings',
             myLanguage
         }));
+    }
+    // If notifications are enabled, request permission if not already granted
+    if (enableNotifications && 'Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission().then(() => {});
+    }
+}
+
+// Play a short notification beep using WebAudio API
+function playNotificationSound() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.value = 880; // Hz
+        g.gain.value = 0.02;
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.start();
+        setTimeout(() => { o.stop(); ctx.close(); }, 120);
+    } catch (e) {
+        console.error('Notification sound error', e);
+    }
+}
+
+// Show browser notification (title, body)
+function showBrowserNotification(title, body) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+        try {
+            const n = new Notification(title, { body });
+            setTimeout(() => n.close(), 5000);
+        } catch (e) {
+            // ignore
+        }
     }
 }
 
