@@ -1,0 +1,68 @@
+[
+  {
+    "username": "aa",
+    "userId": "user_1765303687150_m8as8mkt9",
+    "originalMessage": "Hello",
+    "timestamp": "2025-12-09T18:08:11.285Z"
+  },
+  {
+    "username": "voltz",
+    "userId": "user_1765303707819_0bvm0dh5z",
+    "originalMessage": "Что вы делаете?",
+    "timestamp": "2025-12-09T18:08:31.557Z"
+  },
+  {
+    "username": "aa",
+    "userId": "user_1765303786425_5tm5vx7ij",
+    "originalMessage": "Hello",
+    "timestamp": "2025-12-09T18:09:49.105Z"
+  },
+  {
+    "username": "voltz",
+    "userId": "user_1765303807217_nezvny017",
+    "originalMessage": "[aa]: Привет\n[voltz]: Что вы делаете?\n[aa]: Привет",
+    "timestamp": "2025-12-09T18:10:12.010Z"
+  },
+  {
+    "username": "voltz",
+    "userId": "user_1765303919153_crfhryopo",
+    "originalMessage": "что вы можете сделать",
+    "timestamp": "2025-12-09T18:12:03.730Z"
+  },
+  {
+    "username": "aa",
+    "userId": "user_1765303914215_29r01wqnn",
+    "originalMessage": "what's up",
+    "timestamp": "2025-12-09T18:12:19.778Z"
+  },
+  {
+    "username": "voltz",
+    "userId": "user_1765303919153_crfhryopo",
+    "originalMessage": "что происходит",
+    "timestamp": "2025-12-09T18:12:29.634Z"
+  },
+  {
+    "username": "voltz",
+    "userId": "user_1765304081817_91tj6fmap",
+    "originalMessage": "чё как?",
+    "timestamp": "2025-12-09T18:14:45.009Z"
+  },
+  {
+    "username": "aa",
+    "userId": "user_1765304076031_pfhh9ux7d",
+    "originalMessage": "wassup",
+    "timestamp": "2025-12-09T18:15:02.824Z"
+  },
+  {
+    "username": "voltz",
+    "userId": "user_1765304359953_opendtmuw",
+    "originalMessage": "чё как?",
+    "timestamp": "2025-12-09T18:19:24.456Z"
+  },
+  {
+    "username": "aa",
+    "userId": "user_1765304355104_i1s1okhz0",
+    "originalMessage": "wassup",
+    "timestamp": "2025-12-09T18:19:45.627Z"
+  }
+]
